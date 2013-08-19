@@ -1,9 +1,12 @@
 <?php
+
+namespace Mephir\ETagSession;
+
 /**
  * ETagSession allows you to use session with id is stored in ETag header instead of cookie/url
  *
  * @package    etagtrackingpixel
- * @subpackage storage
+ * @subpackage session
  * @author     Pawel Wilk <pwilkmielno@gmail.com>
  */
 class ETagSession {
