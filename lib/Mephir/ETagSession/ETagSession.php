@@ -9,18 +9,49 @@ namespace Mephir\ETagSession;
  * @subpackage session
  * @author     Pawel Wilk <pwilkmielno@gmail.com>
  */
-class ETagSession {
+class ETagSession //implements ArrayAccess
+{
   protected
-    $options = array();
+    $options = array(),
+    $storage = null,
+    $data = array(),
+    $etag = '';
+
+  protected static $instances = array();
+
+  public static function createInstance(\SessionHandlerInterface $storage, $options = array(), $name = 'default')
+  {
+    if (isset(self::$instances[$name]))
+    {
+      throw new \LogicException(sprintf("Instance '%s' already exists", $name));
+    }
+    $className = __CLASS__;
+    self::$instances[$name] = new $className($storage, $options);
+    return self::$instances[$name];
+  }
+
+  public function getInstance($name = 'default')
+  {
+    if (!isset(self::$instances[$name]))
+    {
+      throw new \DomainException(sprintf("Instance '%s' does not exists", $name));
+    }
+    return self::$instances[$name];
+  }
+
+  public function hasInstance($name = 'default')
+  {
+    return isset(self::$instances[$name]);
+  }
 
   /**
    * Class constructor.
    *
    * @see initialize()
    */
-  public function __construct($options = array())
+  public function __construct(\SessionHandlerInterface $storage, $options = array())
   {
-    $this->initialize($options);
+    $this->initialize($storage, $options);
 
     if ($this->options['auto_shutdown'])
     {
@@ -35,15 +66,26 @@ class ETagSession {
    *
    *  * auto_shutdown: Whether to automatically save the changes to the session (true by default)
    *
+   * @param SessionHandlerInterface $storage  Storage for session
    * @param  array $options  An associative array of options
    *
    * @return bool true, if initialization completes successfully, otherwise false
    */
-  public function initialize($options = array())
+  public function initialize(\SessionHandlerInterface $storage, $options = array())
   {
+    $this->storage = $storage;
     $this->options = array_merge(array(
       'auto_shutdown' => true,
+      'save_path' => '/tmp'
     ), $options);
+
+    if ($this->requestHasETag())
+    {
+      $this->storage->open($this->option['save_path'], $this->getETag());
+    }
+//     header("Cache-Control: private, must-revalidate, proxy-revalidate");
+//     header("ETag: kupa");
+//     $this->getETag();
   }
 
   /**
@@ -115,5 +157,21 @@ class ETagSession {
   public function write($key, $data)
   {
     //
+  }
+
+  protected function requestHasETag()
+  {
+    return !empty($_SERVER["HTTP_IF_NONE_MATCH"]);
+  }
+
+  protected function getETag()
+  {
+    if ($this->requestHasETag())
+    {
+      $this->etag = $_SERVER["HTTP_IF_NONE_MATCH"];
+    } else {
+      $this->etag = uniqid(null, true);
+    }
+    return $this->etag;
   }
 }
