@@ -10,50 +10,50 @@ namespace Mephir\ETagSession\SessionHandler;
  * @subpackage session
  * @author     Pawel Wilk <pwilkmielno@gmail.com>
  */
-class FilesSessionHandler implements SessionHandlerInterface
+class FilesSessionHandler implements \SessionHandlerInterface
 {
-  protected $file_pointer = null;
+  private $save_path;
+
+  public function open($save_path, $session_name)
+  {
+    $this->save_path = $save_path;
+    if (!is_dir($this->save_path)) {
+      mkdir($this->save_path, 0777);
+    }
+    return true;
+  }
 
   public function close()
   {
-    if ($this->file_pointer !== false)
-    {
-      flock($this->file_pointer, LOCK_UN);
-      fclose($this->file_pointer);
-      $this->file_pointer = null;
-      return true;
-    }
-    return false;
+    return true;
   }
 
-  public function destroy($session_id)
+  public function read($id)
   {
-    //
+    return (string)@file_get_contents($this->save_path.'/sess_' . $id);
+  }
+
+  public function write($id, $data)
+  {
+    return file_put_contents($this->save_path.'/sess_' . $id, $data) === false ? false : true;
+  }
+
+  public function destroy($id)
+  {
+    $file = $this->save_path.'/sess_'.$id;
+    if (file_exists($file)) {
+      unlink($file);
+    }
+    return true;
   }
 
   public function gc($maxlifetime)
   {
-    //
-  }
-
-  public function open($save_path, $name)
-  {
-    $this->file_pointer = fopen($save_path.'/'.$name, 'r+');
-    if ($this->file_pointer === false)
-    {
-      return false;
+    foreach (glob($this->save_path.'/sess_*') as $file) {
+      if (filemtime($file) + $maxlifetime < time() && file_exists($file)) {
+        unlink($file);
+      }
     }
-    flock($this->file_pointer, LOCK_EX);
     return true;
-  }
-
-  public function read($session_id)
-  {
-    //
-  }
-
-  public function write($session_id, $session_data)
-  {
-    //
   }
 }

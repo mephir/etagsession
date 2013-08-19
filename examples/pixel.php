@@ -6,5 +6,4 @@ $classLoader->register();
 
 use Mephir\ETagSession\ETagSession;
 use Mephir\ETagSession\SessionHandler;
-
-$etag = ETagSession::createInstance(new SessionHandler\FilesSessionHandler(), array('save_path' => dirname(__FILE__).'\sessions'));
+$session = ETagSession::createInstance(new SessionHandler\FilesSessionHandler(), array('save_path' => dirname(__FILE__).'/sessions'));
