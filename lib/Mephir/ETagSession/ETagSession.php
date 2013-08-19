@@ -65,8 +65,9 @@ class ETagSession //implements ArrayAccess
    * Available options:
    *
    *  * auto_shutdown: Whether to automatically save the changes to the session (true by default)
+   *  * save_path: Path to directory in which session will be saved
    *
-   * @param SessionHandlerInterface $storage  Storage for session
+   * @param  SessionHandlerInterface $storage  Storage for session
    * @param  array $options  An associative array of options
    *
    * @return bool true, if initialization completes successfully, otherwise false
@@ -82,12 +83,8 @@ class ETagSession //implements ArrayAccess
     $this->storage->open($this->options['save_path'], $this->getETag());
     if ($this->requestHasETag())
     {
-      $this->data = $this->storage->read($this->etag);
+      $this->data = unserialize($this->storage->read($this->etag));
     }
-        header("Cache-Control: private, must-revalidate, proxy-revalidate");
-        header("ETag: " . $this->etag);
-    //     $this->getETag();
-
   }
 
   /**
@@ -100,8 +97,13 @@ class ETagSession //implements ArrayAccess
     return $this->options;
   }
 
+  public function has($key)
+  {
+    return isset($this->data[$key]);
+  }
+
   /**
-   * Reads data from this storage.
+   * Get data.
    *
    * The preferred format for a key is directory style so naming conflicts can be avoided.
    *
@@ -136,12 +138,13 @@ class ETagSession //implements ArrayAccess
    * The preferred format for a key is directory style so naming conflicts can be avoided.
    *
    * @param  string $key  A unique key identifying your data
-   *
-   * @return mixed Data associated with the key
    */
   public function remove($key)
   {
-    //
+    if (isset($this->data[$key]))
+    {
+      unset($this->data[$key]);
+    }
   }
 
   /**
@@ -149,7 +152,7 @@ class ETagSession //implements ArrayAccess
    */
   public function shutdown()
   {
-    $this->storage->write($this->etag, $this->data);
+    $this->storage->write($this->etag, serialize($this->data));
     $this->storage->close();
   }
 
@@ -163,22 +166,35 @@ class ETagSession //implements ArrayAccess
    */
   public function set($key, $data)
   {
-    //
+    $this->data[$key] = $data;
   }
 
   protected function requestHasETag()
   {
-    return !empty($_SERVER["HTTP_IF_NONE_MATCH"]);
+    return !empty($_SERVER['HTTP_IF_NONE_MATCH']);
   }
 
+  /**
+   * Generate new ETag or grab it from headers
+   *
+   * @param bool $new  Force render new ETag
+   */
   protected function getETag($new = false)
   {
     if ($this->requestHasETag() && !$new)
     {
-      $this->etag = $_SERVER["HTTP_IF_NONE_MATCH"];
+      $this->etag = str_replace('.', '', str_replace('/', '', str_replace('\\', '', $_SERVER['HTTP_IF_NONE_MATCH'])));
     } else {
-      $this->etag = uniqid(null, true);
+      $this->etag = str_replace('.', '', uniqid(null, true));
     }
     return $this->etag;
+  }
+
+  public function getHeaders()
+  {
+    return array(
+      'Cache-Control: private, must-revalidate, proxy-revalidate',
+      'ETag: ' . $this->etag,
+    );
   }
 }
