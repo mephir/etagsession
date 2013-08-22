@@ -9,7 +9,7 @@ namespace Mephir\ETagSession;
  * @subpackage session
  * @author     Pawel Wilk <pwilkmielno@gmail.com>
  */
-class ETagSession //implements ArrayAccess
+class ETagSession implements ArrayAccess
 {
   protected
     $options = array(),
@@ -169,6 +169,11 @@ class ETagSession //implements ArrayAccess
     $this->data[$key] = $data;
   }
 
+  /**
+   * Checking if request have ETag header
+   *
+   * @return boolean
+   */
   protected function requestHasETag()
   {
     return !empty($_SERVER['HTTP_IF_NONE_MATCH']);
@@ -190,11 +195,52 @@ class ETagSession //implements ArrayAccess
     return $this->etag;
   }
 
+  /**
+   * Generates header which needs to be sent to user
+   *
+   * @return array
+   */
   public function getHeaders()
   {
     return array(
       'Cache-Control: private, must-revalidate, proxy-revalidate',
       'ETag: ' . $this->etag,
     );
+  }
+
+  /**
+   * Whether a offset exists
+   * @see http://www.php.net/manual/en/arrayaccess.offsetexists.php
+   */
+  public function offsetExists($offset)
+  {
+    return $this->has($offset);
+  }
+
+  /**
+   * Returns the value at specified offset
+   * @see http://www.php.net/manual/en/arrayaccess.offsetget.php
+   */
+  public function offsetGet($offset)
+  {
+    return $this->get($offset);
+  }
+
+  /**
+   * Assigns a value to the specified offset
+   * @see http://www.php.net/manual/en/arrayaccess.offsetset.php
+   */
+  public function offsetSet ($offset, $value)
+  {
+    $this->set($offset, $value);
+  }
+
+  /**
+   * Unsets an offset.
+   * @see http://www.php.net/manual/en/arrayaccess.offsetunset.php
+   */
+  public function offsetUnset($offset)
+  {
+    $this->remove($offset);
   }
 }
