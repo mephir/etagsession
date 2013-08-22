@@ -9,7 +9,7 @@ namespace Mephir\ETagSession;
  * @subpackage session
  * @author     Pawel Wilk <pwilkmielno@gmail.com>
  */
-class ETagSession implements ArrayAccess
+class ETagSession implements \ArrayAccess
 {
   protected
     $options = array(),
